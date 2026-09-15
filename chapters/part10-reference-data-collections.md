@@ -1,5 +1,5 @@
 ---
-title: "Part 10 — Reference Data Collections: Sets, Maps, Map of Sets, Map of Maps, and Sequences"
+title: "Part 10 — Reference Data Collections: Sets, Maps, Map of Sets, Map of Maps, and Tables"
 part: 10
 author: "author-agent"
 reviewer: "technical-reviewer-agent"
@@ -10,13 +10,13 @@ deh_depends_on: ["part27#2.2", "part27#2.3", "part27#3.3"]
 qradar_version_scope: "General/version-agnostic for the reference-data type taxonomy, the TTL/expiry concept, and the three population paths (Rule Response, REST API, bulk import) — these are stable architectural features across QRadar 7.x. The exact catalog and naming of reference-data types, per-type TTL configuration UI, and REST API endpoint/parameter details are flagged individually with PRODUCT VERSION NOTE callouts per STYLE-GUIDE.md §11 rather than asserted as current for any single release."
 ---
 
-# Part 10 — Reference Data Collections: Sets, Maps, Map of Sets, Map of Maps, and Sequences
+# Part 10 — Reference Data Collections: Sets, Maps, Map of Sets, Map of Maps, and Tables
 
 ## Why this part exists
 
 **[CONCEPT]** DEH Part 27 introduced exactly one reference-data object — the Reference Set — for two purposes, in two different sections: §2.2's generic illustrative example, giving a two-stage correlation pattern (`RS-Stage1-Seen`) a place to persist state between an event's first-stage match and a second, later event's evaluation; and §3.3's worked DET-27-01 case study, giving `R: Suspicious LSASS Access — Unapproved Process` a maintained allowlist (`RS-Allowlisted-LSASS-Tools`) to check membership against. That part was explicit about scope: it needed one worked example to prove that QRadar's Reference Set is the platform's structural answer to what a KQL `join` or an SPL `transaction` expresses natively, not a full survey of the reference-data type catalog.
 
-This part is that survey. A Reference Set is the simplest member of a five-shape taxonomy — Set, Map, Map of Sets, Map of Maps, and a sequence-tracking variant — and picking the wrong shape for a given correlation question either forces awkward workarounds (cramming a key-value relationship into a bare Set by concatenating the key and value into one string) or silently fails to answer the question at all (checking "is this IP anywhere in the set" when the real question was "is this IP associated with *this specific user's* recent history"). It also covers the maintenance dimension DEH Part 27 §2.2 flagged once and moved past: time-to-live (TTL) management, and the three distinct paths — Rule Response, the REST API, and a bulk console import — a piece of reference data can be populated through, each with its own drift risk when more than one of them touches the same object without coordination.
+This part is that survey. A Reference Set is the simplest member of a five-shape taxonomy — Set, Map, Map of Sets, Map of Maps, and Table — and picking the wrong shape for a given correlation question either forces awkward workarounds (cramming a key-value relationship into a bare Set by concatenating the key and value into one string) or silently fails to answer the question at all (checking "is this IP anywhere in the set" when the real question was "is this IP associated with *this specific user's* recent history"). It also covers the maintenance dimension DEH Part 27 §2.2 flagged once and moved past: time-to-live (TTL) management, and the three distinct paths — Rule Response, the REST API, and a bulk console import — a piece of reference data can be populated through, each with its own drift risk when more than one of them touches the same object without coordination.
 
 This part does not re-teach AQL syntax or the Custom Rules Engine's basic Rule Test/Building Block mechanics; DEH Part 27 §1 and §2.1 own that, and this book's Part 8 (Rule Wizard catalog) and Part 9 (Building Block governance) own the adjacent authoring-surface ground. What follows assumes a reader already comfortable with "a Rule Test can check whether a property is contained in a Reference Set" and wants the rest of the typed reference-data picture DEH Part 27 gestures at — "Reference Set (or its typed relatives — Reference Map, Reference Table)" — but never expands.
 
@@ -34,10 +34,10 @@ A bare Reference Set answers exactly one kind of question well: "is this value p
 | Reference Map | One key maps to one value | What single value is associated with this key? | `RM-Asset-To-Owner` |
 | Reference Map of Sets | One key maps to a set of values | What set of values has accumulated under this key? Is this specific value already in that key's set? | `RMOS-User-To-Source-IPs` |
 | Reference Map of Maps | One key maps to a second key, which maps to a value | For this first key, what value is stored under this second key? | `RMOM-Host-ProcessBaseline` |
-| Reference Sequence (ordered/staged tracking) | Keyed entries tracked with an ordering or arrival-sequence constraint | Have these keyed stages been observed in the required order within the tracked window? | `RSEQ-KillChain-Stage-Tracker` |
+| Reference Table | Keyed row with one or more named, typed inner keys ("columns") holding a value | What multi-column record is associated with this key? | `RT-Asset-Inventory` |
 
 > **PRODUCT VERSION NOTE**
-> The five rows above name the shapes this book's correlation examples actually need, not a guaranteed one-to-one match to a specific QRadar release's Admin console labels. IBM's reference-data catalog has historically also exposed a multi-column **Reference Table** structure (a keyed row with several named columns, functionally close to a Map of Maps) under console wording that has not stayed constant across versions, and dedicated ordered/sequence-tracking support may appear as its own named collection type in some releases and as a pattern you build manually on top of a Map in others. Check Admin > Reference Set Management (or your version's equivalent menu) for the exact list of collection types your console offers before assuming any specific name or count from this table exists verbatim in your deployment.
+> The five rows above name the shapes this book's correlation examples actually need, not a guaranteed one-to-one match to a specific QRadar release's Admin console labels or REST API wording. The reference-data type catalog itself (Set, Map, Map of Sets, Map of Maps, Table) is a stable architectural feature of the platform rather than something that has gained or lost a member across recent releases, but the Admin console's exact menu labels for each type have not stayed constant across versions. Check Admin > Reference Set Management (or your version's equivalent menu) for the exact wording your console uses before assuming any specific label from this table exists verbatim in your deployment.
 
 ```mermaid
 flowchart TB
@@ -49,7 +49,7 @@ flowchart TB
     RR --> RD
     API --> RD
     BULK --> RD
-    RD["Reference data object\nSet / Map / Map of Sets /\nMap of Maps / sequence tracker\n— Section 1"]
+    RD["Reference data object\nSet / Map / Map of Sets /\nMap of Maps / Table\n— Section 1"]
     RD -->|"Rule Test:\nmembership or lookup"| CRE["Custom Rules Engine\nreal-time evaluation"]
     RD -->|"ad hoc lookup\nSection 8"| AQL["Analyst / hunter\nAQL search"]
     RD -.->|"TTL — Section 5"| EXP["Entry ages out,\nor never does\nif no TTL is set"]
@@ -99,7 +99,7 @@ A Reference Set alone cannot express this: a flat Set of "all source IPs anyone 
 
 ---
 
-## 4. Reference Map of Maps and ordered/sequence-style state
+## 4. Reference Map of Maps and Reference Table: two-key and multi-column state
 
 **[RULE ENGINEER]** A Reference Map of Maps adds a second level of keying: an outer key maps to an inner key, which maps to a value — two lookups deep, still resolved in one Rule Test evaluation rather than a chained pair of Rules. This is the right shape whenever the correlation question is naturally "for *this* entity, what do I know about *this specific sub-thing*," and a single flat key would either collide across entities or need to be reconstructed by string-concatenating two identifiers, the same workaround §3 flagged for Map of Sets.
 
@@ -111,20 +111,24 @@ This is a heavier object than a Map of Sets in exactly the way its structure sug
 
 **MITRE:** a first-seen-process baseline of this kind is one practical, native-CRE approach to surfacing **T1059 (Command and Scripting Interpreter)** and living-off-the-land tooling generally — it does not name a single technique on its own, since "a process ran on this host for the first time" is a weak signal in isolation and needs the same allowlist/context discipline DEH Part 23's False Positive Trap already requires for any first-seen heuristic.
 
-### Ordered and sequence-tracking state
+### RT-Asset-Inventory — a Reference Table anatomy
 
-**[RULE ENGINEER]** Some correlation questions add a third dimension on top of "which key, which sub-key": *order*. DEH Part 27 §2.2's two-stage pattern (`RS-Stage1-Seen` gating a second Rule) already tracks a two-step sequence with nothing more than a plain Reference Set — stage 1 writes, stage 2 reads, and the ordering is implicit in "stage 2's Rule Test only fires after stage 1's Response has run." Extending that past two stages, or adding an explicit *within-order* constraint (stage 2 must follow stage 1, not merely coexist with it), is what this book's outline names `RSEQ-KillChain-Stage-Tracker` — a keyed collection where each entry also records which stage of a defined sequence has been reached and when, so a later Rule Test can check both "has this key reached stage N" and "was the interval between stages plausible."
+**[RULE ENGINEER]** `RT-Asset-Inventory` uses a hostname or IP (outer key, matching whichever asset identifier Part 20's asset model uses consistently) plus a fixed set of named, typed inner keys — `owner`, `criticality`, and `last_patched` — each holding its own value for that asset: the owning team's identifier, a criticality tier, and the timestamp of the asset's most recent patch cycle. A Rule Test can pull any one column for a given asset (the `criticality` column feeding an Offense's severity weighting) without needing three separate Reference Maps kept in sync by hand, and a Rule Response updating one column (a patch-management integration writing `last_patched` on every completed cycle) never touches the others. This is the structural difference from a Map of Maps: a Map of Maps' inner key space is open-ended and per-entry (process image paths differ host to host, as `RMOM-Host-ProcessBaseline` above shows), where a Reference Table's inner keys are a fixed, named column set defined once when the table is created and shared by every outer key stored in it.
+
+### Ordered and sequence-tracking as a pattern, not a type
+
+**[RULE ENGINEER]** Some correlation questions add a third dimension on top of "which key, which sub-key": *order*. DEH Part 27 §2.2's two-stage pattern (`RS-Stage1-Seen` gating a second Rule) already tracks a two-step sequence with nothing more than a plain Reference Set — stage 1 writes, stage 2 reads, and the ordering is implicit in "stage 2's Rule Test only fires after stage 1's Response has run." Extending that past two stages, or adding an explicit *within-order* constraint (stage 2 must follow stage 1, not merely coexist with it), does not call for a sixth object type — QRadar's reference-data catalog has no dedicated ordered- or sequence-tracking collection in any release. It is a pattern built on top of the Reference Map or Reference Table shapes already in this section: a keyed entry (`RM-KillChain-Stage-Tracker`, or `RT-KillChain-Stage-Tracker` if more than one attribute needs tracking per stage) whose value records which stage of a defined sequence has been reached and when, so a later Rule Test can check both "has this key reached stage N" and "was the interval between stages plausible" against logic you write yourself rather than a mechanism the platform provides natively.
 
 > **PRODUCT VERSION NOTE**
-> Whether your specific QRadar release exposes a dedicated ordered/sequence collection type as a first-class reference-data object, versus requiring the same effect to be built manually on top of a Reference Map (storing a stage number and timestamp as the value, and layering the ordering check into the Rule Test logic yourself), is exactly the kind of feature-existence question §11 of the style guide flags as version-dependent rather than universal. Either path reaches the same operational result — a multi-stage kill-chain tracker keyed by entity, gated on order and interval — so design the correlation logic against the *pattern* in this section and confirm which mechanical form your console actually offers before committing a Rule Wizard configuration to one specific object type.
+> Whether your Admin console packages any convenience wizard for this kind of multi-stage tracking on top of a Reference Map or Reference Table, versus leaving the stage-number-and-timestamp bookkeeping entirely to the Rule Response and Rule Test logic you write yourself, is the kind of console-convenience detail that has varied across releases — the underlying object shape (a Map or a Table, per §1) does not. Confirm what your own Rule Wizard offers before assuming either path.
 
-Whichever mechanical form is available, the general lesson generalizes past three stages the same way DEH Part 27 §4's threshold-rule discussion generalizes past one: a native aggregation test handles "count of one event type, one key, one window" cheaply; anything with a state dimension — membership, lookup, or now order — needs some shape of reference data, and the shape should match the actual question, not the first object type that happens to be already deployed for something else.
+Whichever shape you build it on, the general lesson generalizes past three stages the same way DEH Part 27 §4's threshold-rule discussion generalizes past one: a native aggregation test handles "count of one event type, one key, one window" cheaply; anything with a state dimension — membership, lookup, or now order — needs some shape of reference data, and the shape should match the actual question, not the first object type that happens to be already deployed for something else.
 
 ---
 
 ## 5. TTL and expiry: the maintenance dimension every type shares
 
-**[PLATFORM ENGINEER]** Every reference-data type above shares one property DEH Part 27 §2.2 states once and does not revisit: none of them expire an entry automatically unless a time-to-live is explicitly configured on the collection. A Reference Set, Map, Map of Sets, Map of Maps, or sequence tracker with no TTL configured behaves exactly as designed for as long as it exists — which is precisely the trap in `RS-Recent-Failed-MFA-Sources` from §2: the object never malfunctions, it simply keeps answering a question ("has this source ever failed an MFA challenge") that stopped being the question anyone meant to ask the moment "recent" quietly became "ever."
+**[PLATFORM ENGINEER]** Every reference-data type above shares one property DEH Part 27 §2.2 states once and does not revisit: none of them expire an entry automatically unless a time-to-live is explicitly configured on the collection. A Reference Set, Map, Map of Sets, Map of Maps, or Table with no TTL configured behaves exactly as designed for as long as it exists — which is precisely the trap in `RS-Recent-Failed-MFA-Sources` from §2: the object never malfunctions, it simply keeps answering a question ("has this source ever failed an MFA challenge") that stopped being the question anyone meant to ask the moment "recent" quietly became "ever."
 
 TTL posture is not one-size-fits-all across the taxonomy — it depends on what the object represents, not what shape it is:
 
@@ -182,7 +186,8 @@ The drift risk table's middle row is worth naming as a concrete failure, not an 
 - **"What single fact is associated with this key?"** — Reference Map. One key, one value, a lookup rather than a membership check.
 - **"What has accumulated under this key, and is this new value already part of it?"** — Reference Map of Sets. Any "per-entity recent history" question — source IPs per user, destination ports per host, escalation targets per team — belongs here rather than encoded into a flat Set's concatenated strings.
 - **"For this entity, what do I know about this specific sub-thing?"** — Reference Map of Maps. Two genuinely independent keys (host and process, asset and vulnerability ID, tenant and rule) that would otherwise need string concatenation to fit a flatter type.
-- **"Have these stages happened, in this order, within a plausible interval?"** — an ordered/sequence-tracking pattern, whether your release exposes it as its own object type or you build it on a Map per §4's PRODUCT VERSION NOTE.
+- **"What multi-column record is associated with this key?"** — Reference Table. A per-entity record with more than one fixed, named attribute (an asset's owner, criticality, and last-patched date) belongs here rather than several parallel Reference Maps that have to be kept in sync by key.
+- **"Have these stages happened, in this order, within a plausible interval?"** — not a distinct object type at all; build it as a pattern on top of whichever of the two prior answers fits (Reference Map for one tracked attribute per stage, Reference Table for more than one) per §4.
 
 A Rule Engineer who defaults to the Reference Set for every new correlation need — because it was the first type learned, and DEH Part 27 §2.2 only demonstrated that one — eventually produces exactly the string-concatenation workarounds §3 and §4 both warn against: technically functional, materially harder for the next reviewer to read, and a worse fit for Part 9's Building Block governance discipline than an object whose type already documents what question it answers.
 
@@ -220,7 +225,7 @@ The more reliable validation path, and the one that needs no unverified AQL func
 
 ## 9. Governance: the review burden of five object types instead of one
 
-**[SOC MANAGEMENT]** DEH Part 27's own closing paragraph named the three-object review burden a QRadar detection carries relative to a single Sigma file or native query — a Building Block, a Reference Set, and a Rule, each separately versioned and permissioned. This part's taxonomy adds a dimension to that burden rather than replacing it: "reviewing the reference data" is no longer one predictable object shape. A reviewer now has to check a Reference Set's membership list, a Reference Map's key coverage, a Map of Sets' per-key cardinality growth, a Map of Maps' two-level consistency, and a sequence tracker's stage-transition logic where one is in use — each with its own TTL posture and population path per §5 and §6 — and none of that collapses into the single "check the query" pass a native SPL or KQL detection's usually-stateless logic allows.
+**[SOC MANAGEMENT]** DEH Part 27's own closing paragraph named the three-object review burden a QRadar detection carries relative to a single Sigma file or native query — a Building Block, a Reference Set, and a Rule, each separately versioned and permissioned. This part's taxonomy adds a dimension to that burden rather than replacing it: "reviewing the reference data" is no longer one predictable object shape. A reviewer now has to check a Reference Set's membership list, a Reference Map's key coverage, a Map of Sets' per-key cardinality growth, a Map of Maps' two-level consistency, and a Reference Table's per-column consistency across its outer keys — each with its own TTL posture and population path per §5 and §6 — and none of that collapses into the single "check the query" pass a native SPL or KQL detection's usually-stateless logic allows.
 
 > **SOC Management View**
 > A team with forty Rules but two hundred reference-data objects behind them — some Sets, some Maps, several Maps of Sets from an impossible-travel program, a handful of baseline Maps of Maps nobody has re-validated since the host fleet's last refresh — has a materially larger review surface than the Rule count alone suggests. "We reviewed forty rules this quarter," reported without naming how many reference-data objects back them, is the same coverage-count confusion DEH Part 1 and Part 23 §5 warn against, restated here for the object layer Part 9 and Part 15 both depend on staying honest.

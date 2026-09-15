@@ -34,7 +34,7 @@ Table 22.1 states what each role owns, which parts of this book cover that owner
 | Role | Owns | Primary objects touched | Owning parts |
 |---|---|---|---|
 | Analyst | Offense triage, disposition, reason-coded closure, escalation | Offense queue (magnitude/credibility/relevance) | Part 3, Part 14 |
-| Rule Engineer | Rule Wizard authoring, `BB:` design and governance, `RS-`/reference-data type selection and maintenance, change management | `R:` Rules, `BB:` Building Blocks, `RS-` Reference Sets/Maps/Tables/Sequences | Part 8, Part 9, Part 10, Part 16 |
+| Rule Engineer | Rule Wizard authoring, `BB:` design and governance, `RS-`/reference-data type selection and maintenance, change management | `R:` Rules, `BB:` Building Blocks, `RS-` Reference Sets/Maps/Tables | Part 8, Part 9, Part 10, Part 16 |
 | Platform Engineer | Deployment topology, DSM/log source onboarding, custom-property governance, Ariel performance, licensing/capacity, App Framework, troubleshooting | Log Sources, DSMs, Ariel indexes, App Host, license/EPS budget | Part 2, Parts 4–7, Part 12, Part 17, Part 18, Part 19 |
 | SOC Management | Headcount, cadence, MSSP-vs-in-house structure, TCO, cross-role escalation boundaries | None directly — budgets and governs the other three roles' work | Part 22 (this part) |
 
