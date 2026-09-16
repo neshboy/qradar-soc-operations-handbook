@@ -1,0 +1,12 @@
+QRadar SOC Operations. Built for the people who run the platform, not just query it. Free. Public.
+
+A Rule that fires an Offense isn't a QRadar practice — the practice is everything holding that Rule up.
+
+From DSM and log source onboarding → custom properties → the full Rule Wizard catalog → Building Block governance at scale → reference data (Set/Map/Map of Sets/Map of Maps/Table) → Ariel search performance → offense triage → noisy-offense tuning → rule change management → licensing/EPS/FPM capacity → asset model, multi-tenancy, and troubleshooting.
+
+Inside: offense scoring (magnitude, credibility, relevance), the Rule Wizard's full catalog beyond one canonical rule, Building Block naming and change control without a git-based pipeline, the complete Reference Set/Map/Table taxonomy, DSM onboarding and QID mapping, calculated and extracted custom properties, flow-vs-event architecture, Ariel search tuning, dashboards and honest offense-count reporting, a repeatable noisy-offense tuning workflow (intake → diagnosis → change → re-validation), and named troubleshooting playbooks for a log source that stops parsing, a DSM/QID mismatch after an agent upgrade, and offense flooding.
+
+Every part is tagged for the reader's actual relationship to the work — Analyst, Rule Engineer, Platform Engineer, Threat Hunter, and SOC Management — so one book serves the whole team, not just whoever owns the console.
+
+Full PDF: https://raw.githubusercontent.com/neshboy/qradar-soc-operations-handbook/master/QRadar_SOC_Operations.pdf
+Repo: https://github.com/neshboy/qradar-soc-operations-handbook
