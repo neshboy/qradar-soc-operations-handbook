@@ -45,6 +45,7 @@ python add_watermark.py
 ## Repository layout
 
 - `chapters/` — the 22 parts, Markdown source of record.
+- `REFERENCES.md` — real, independently-fetched external sources (IETF RFCs, IBM's own public GitHub repositories) cited inline in `chapters/`, plus an honest record of sources checked and *not* used because they couldn't be independently verified (IBM's LEEF spec, the ArcSight/OpenText CEF spec) rather than papered over with a guessed URL.
 - `appendices/` — reserved for A1–A3 (QRadar Terminology Addendum, Rule Wizard/Rule Test Quick Reference, Troubleshooting Decision Trees); planned in `BOOK-INDEX.md` but not yet authored.
 - `assets/diagrams/` — rendered Mermaid SVGs, one per figure referenced in `chapters/`.
 - `build/` — the build/render/watermark tooling above.

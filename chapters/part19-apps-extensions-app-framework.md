@@ -171,6 +171,8 @@ curl -k -H "SEC: <app-service-token>" \
 > **PRODUCT VERSION NOTE**
 > The REST API's exact authentication header name and mechanism, endpoint path and versioning scheme, and the specific permission-scope granularity an app manifest can request (a whole-category grant like "Offense read/write" versus a narrower per-object grant) have evolved across QRadar releases and are exactly the kind of literal API detail this part flags rather than asserts as current. Verify the current authentication mechanism, endpoint versioning, and permission-scope model against your own deployment's REST API documentation before an app's declared permission request is evaluated against it.
 
+The `SEC`-header authentication model and the create-search/poll-status/retrieve-results shape shown above are not this book's own guess at the REST API's surface: IBM's own public `qradar-mcp` reference implementation documents the same `SEC`/`QRadarCSRF` header pair (or an authorized service token passed as `SEC`) and the same Ariel-search lifecycle — submit a query, poll its status, then retrieve results — as the mechanism it wraps for programmatic callers (IBM, "qradar-mcp," GitHub, 2026: https://github.com/IBM/qradar-mcp). That confirms the shape of the pattern; it does not override the version note above about trusting any single header name or endpoint path as permanently current.
+
 ---
 
 ## 6. Governance risk: installing a third-party app against a production deployment
